@@ -1,23 +1,117 @@
-Ma9ha PRO+ Secure body{margin:0;font-family:Arial;background:#0f172a;color:#fff} header{background:#22c55e;padding:15px;text-align:center;font-size:22px;font-weight:bold} .container{padding:15px;max-width:600px;margin:auto} .card{background:#1e293b;padding:15px;border-radius:12px;margin-bottom:15px} input,select{width:100%;padding:10px;margin:5px 0;border-radius:6px;border:none} button{width:100%;padding:10px;background:#22c55e;color:white;border:none;border-radius:6px;margin-top:5px} .lock{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;flex-direction:column} 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Ma9ha PRO+</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-🔒 Code PIN
+<style>
+body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
+header{background:#22c55e;padding:15px;text-align:center;font-size:22px;font-weight:bold}
+.container{padding:15px;max-width:600px;margin:auto}
+.card{background:#1e293b;padding:15px;border-radius:12px;margin-bottom:15px}
+input,select{width:100%;padding:10px;margin:5px 0;border-radius:6px;border:none}
+button{width:100%;padding:10px;background:#22c55e;color:white;border:none;border-radius:6px;margin-top:5px}
+.lock{position:fixed;top:0;left:0;width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;flex-direction:column}
+</style>
+</head>
 
-Entrer 
+<body>
 
-☕ Ma9ha PRO+ Secure 
+<div id="lockScreen" class="lock">
+<h2>🔒 Code PIN</h2>
+<input type="password" id="pinInput">
+<button onclick="unlock()">Entrer</button>
+</div>
 
-➕ Vente
+<header>☕ Ma9ha PRO+ Secure</header>
 
-CaféThéJus Ajouter 
+<div class="container">
 
-💸 Dépenses
+<div class="card">
+<h3>➕ Vente</h3>
+<input type="number" id="quantite" placeholder="Quantité">
+<input type="number" id="prix" placeholder="Prix">
+<button onclick="addSale()">Ajouter</button>
+</div>
 
-Ajouter 
+<div class="card">
+<h3>💸 Dépenses</h3>
+<input type="number" id="depMontant" placeholder="Montant">
+<button onclick="addExpense()">Ajouter</button>
+</div>
 
-🧾 Facture PDF
+<div class="card">
+<h3>🧾 Facture PDF</h3>
+<input type="text" id="client" placeholder="Client">
+<button onclick="generatePDF()">Télécharger PDF</button>
+</div>
 
-Télécharger PDF 
+<div class="card">
+<h3>📊 Résumé</h3>
+<div id="resume"></div>
+</div>
 
-📊 Résumé
+</div>
 
-let PIN="0825"; // تقدر تبدلو function unlock(){ let val=document.getElementById('pinInput').value; if(val===PIN){document.getElementById('lockScreen').style.display='none'} } let ventes=JSON.parse(localStorage.getItem('ventes'))||[]; let depenses=JSON.parse(localStorage.getItem('depenses'))||[]; function save(){ localStorage.setItem('ventes',JSON.stringify(ventes)); localStorage.setItem('depenses',JSON.stringify(depenses)); } function addSale(){ let q=+document.getElementById('quantite').value; let p=+document.getElementById('prix').value; ventes.push({q,p}); save();update(); } function addExpense(){ let m=+document.getElementById('depMontant').value; depenses.push({m}); save();update(); } function update(){ let v=ventes.reduce((a,x)=>a+(x.q*x.p),0); let d=depenses.reduce((a,x)=>a+x.m,0); let b=v-d; document.getElementById('resume').innerHTML=`Ventes: ${v} DH<br>Dépenses: ${d} DH<br>Bénéfice: ${b} DH`; } function generatePDF(){ const { jsPDF } = window.jspdf; let doc=new jsPDF(); let client=document.getElementById('client').value; let total=ventes.reduce((a,v)=>a+(v.q*v.p),0); doc.text("Ma9ha PRO+",10,10); doc.text("Client: "+client,10,20); doc.text("Total: "+total+" DH",10,30); doc.save("facture.pdf"); } update(); 
+<script>
+
+let PIN="0825";
+
+function unlock(){
+let val=document.getElementById('pinInput').value;
+if(val===PIN){
+document.getElementById('lockScreen').style.display='none';
+}
+}
+
+let ventes=JSON.parse(localStorage.getItem('ventes'))||[];
+let depenses=JSON.parse(localStorage.getItem('depenses'))||[];
+
+function save(){
+localStorage.setItem('ventes',JSON.stringify(ventes));
+localStorage.setItem('depenses',JSON.stringify(depenses));
+}
+
+function addSale(){
+let q=+document.getElementById('quantite').value;
+let p=+document.getElementById('prix').value;
+ventes.push({q,p});
+save();update();
+}
+
+function addExpense(){
+let m=+document.getElementById('depMontant').value;
+depenses.push({m});
+save();update();
+}
+
+function update(){
+let v=ventes.reduce((a,x)=>a+(x.q*x.p),0);
+let d=depenses.reduce((a,x)=>a+x.m,0);
+let b=v-d;
+
+document.getElementById('resume').innerHTML=
+"Ventes: "+v+" DH<br>Dépenses: "+d+" DH<br>Bénéfice: "+b+" DH";
+}
+
+function generatePDF(){
+const { jsPDF } = window.jspdf;
+let doc=new jsPDF();
+
+let client=document.getElementById('client').value;
+let total=ventes.reduce((a,v)=>a+(v.q*v.p),0);
+
+doc.text("Ma9ha PRO+",10,10);
+doc.text("Client: "+client,10,20);
+doc.text("Total: "+total+" DH",10,30);
+
+doc.save("facture.pdf");
+}
+
+update();
+
+</script>
+
+</body>
+</html>
