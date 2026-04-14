@@ -1,16 +1,15 @@
-<!-- fix -->
-<!DOCTYPE html>
+<!<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>MA9HA PRO+ | ULTIMATE GESTION</title>
+  <title>MA9HA PRO+ | GESTION TOTALE</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * {
       box-sizing: border-box;
-      font-family: 'Segoe UI', system-ui, 'Helvetica Neue', sans-serif;
+      font-family: 'Segoe UI', system-ui, sans-serif;
     }
     body {
       margin: 0;
@@ -165,14 +164,14 @@
 </head>
 <body>
 
-<!-- ÉCRAN VERROUILLAGE PIN -->
+<!-- ÉCRAN DE VERROUILLAGE -->
 <div id="lockScreen" class="lock">
   <div style="background:#0f172a; padding: 2rem; border-radius: 2rem; text-align: center; width: 280px;">
     <h2>🔐 MA9HA PRO+</h2>
     <input type="password" id="pinInput" placeholder="Code PIN" style="text-align:center;">
     <button id="unlockBtn" style="margin-top: 10px;">DÉVERROUILLER</button>
     <p id="pinError" style="color:#f87171; font-size:12px; margin-top:10px;"></p>
-    <p class="badge">🔒 Sécurité PRO</p>
+    <p class="badge">🔒 Sécurité niveau PRO</p>
   </div>
 </div>
 
@@ -192,35 +191,39 @@
     </div>
   </div>
 
-  <!-- AJOUT NOUVEL ARTICLE PERSONNALISÉ -->
+  <!-- CRÉER UN NOUVEL ARTICLE -->
   <div class="card">
     <h3>➕ CRÉER UN NOUVEL ARTICLE</h3>
     <div class="row">
-      <input type="text" id="newProductName" placeholder="Nom du produit (ex: Tisane)">
+      <input type="text" id="newProductName" placeholder="Nom du produit (ex: Tisane)" autocomplete="off">
       <input type="number" id="newProductStock" placeholder="Stock initial" value="10">
     </div>
-    <button id="createProductBtn">✨ Ajouter l'article + lister automatiquement</button>
+    <button id="createProductBtn">✨ AJOUTER L'ARTICLE</button>
   </div>
 
   <!-- VENTE AVEC LISTE DYNAMIQUE -->
   <div class="card">
     <h3>🛒 VENTE (déstockage automatique)</h3>
     <div class="row">
-      <select id="produitSelect"></select>
+      <select id="produitSelect">
+        <option value="">-- Chargement des produits --</option>
+      </select>
       <input type="number" id="quantiteVente" placeholder="Quantité" value="1">
       <input type="number" id="prixVente" placeholder="Prix unitaire (DH)" value="10">
     </div>
     <button id="ajoutVenteBtn">✅ AJOUTER LA VENTE</button>
   </div>
 
-  <!-- GESTION STOCK PRO (augmentation par liste déroulante) -->
+  <!-- AUGMENTATION STOCK AVEC LISTE DÉROULANTE -->
   <div class="card">
-    <h3>📦 AUGMENTATION STOCK (sélection article)</h3>
+    <h3>📦 AUGMENTATION STOCK</h3>
     <div class="row">
-      <select id="stockProductSelect"></select>
+      <select id="stockProductSelect">
+        <option value="">-- Sélectionner un produit --</option>
+      </select>
       <input type="number" id="stockQtyAdd" placeholder="Quantité à ajouter">
     </div>
-    <button id="addStockBtn">➕ Augmenter le stock</button>
+    <button id="addStockBtn">➕ AUGMENTER LE STOCK</button>
     <div id="stockListContainer" class="table-responsive" style="margin-top: 12px;"></div>
   </div>
 
@@ -246,7 +249,7 @@
     </div>
   </div>
 
-  <!-- HISTORIQUE VENTES -->
+  <!-- HISTORIQUE DES VENTES -->
   <div class="card">
     <h3>🧾 HISTORIQUE DES VENTES</h3>
     <div id="salesListContainer" class="table-responsive"></div>
@@ -262,7 +265,7 @@
     <div id="qrInvoiceCanvas"></div>
   </div>
 
-  <!-- ALERTES -->
+  <!-- ALERTES STOCK -->
   <div class="card">
     <h3>⚠️ ALERTES STOCK</h3>
     <div id="alertsPanel"></div>
@@ -270,7 +273,7 @@
 </div>
 
 <script>
-  // ---------- DONNÉES ----------
+  // ---------- DONNÉES PRINCIPALES ----------
   let ventes = [];        // {produit, qte, prix, total, date}
   let depenses = [];      // {motif, montant, date}
   let stock = [];         // {nom, quantite}
@@ -285,7 +288,7 @@
   const unlockBtn = document.getElementById('unlockBtn');
   const pinErrorSpan = document.getElementById('pinError');
 
-  // Helpers
+  // Sauvegarde / Chargement
   function saveToLocal() {
     localStorage.setItem('ventes_pro', JSON.stringify(ventes));
     localStorage.setItem('depenses_pro', JSON.stringify(depenses));
@@ -300,6 +303,7 @@
     if (savedDep) depenses = JSON.parse(savedDep);
     if (savedStock) stock = JSON.parse(savedStock);
     if (!stock.length) {
+      // Stock par défaut pour démarrer
       stock = [
         { nom: "Café", quantite: 30 },
         { nom: "Thé", quantite: 22 },
@@ -311,7 +315,7 @@
     }
   }
 
-  // Mettre à jour un produit (ajout de stock)
+  // Met à jour la quantité d'un produit (delta positif ou négatif)
   function updateStockQuantity(productName, delta) {
     const idx = stock.findIndex(s => s.nom.toLowerCase() === productName.toLowerCase());
     if (idx !== -1) {
@@ -324,23 +328,31 @@
     refreshAll();
   }
 
-  // Ajouter un nouvel article personnalisé
+  // Ajout d'un nouvel article (uniquement si n'existe pas)
   function addCustomProduct(name, initialStock) {
-    if (!name.trim()) return false;
-    const exists = stock.some(s => s.nom.toLowerCase() === name.toLowerCase());
-    if (exists) { alert("Ce produit existe déjà !"); return false; }
+    if (!name.trim()) { alert("Veuillez entrer un nom de produit."); return false; }
+    const exists = stock.some(s => s.nom.toLowerCase() === name.trim().toLowerCase());
+    if (exists) {
+      alert(`⚠️ Le produit "${name}" existe déjà dans la liste. Utilisez l'augmentation de stock pour en ajouter.`);
+      return false;
+    }
     stock.push({ nom: name.trim(), quantite: Math.max(0, initialStock) });
     saveToLocal();
     refreshAll();
+    alert(`✅ Produit "${name}" ajouté avec succès !`);
     return true;
   }
 
-  // Vente avec vérification stock
+  // Vente avec vérification et déstockage
   function sellProduct(produit, qte, prixUnitaire) {
-    if (qte <= 0 || prixUnitaire <= 0) { alert("Quantité et prix valides"); return false; }
+    if (qte <= 0 || prixUnitaire <= 0) { alert("Quantité et prix valides requis"); return false; }
     const stockItem = stock.find(s => s.nom.toLowerCase() === produit.toLowerCase());
-    if (!stockItem || stockItem.quantite < qte) {
-      alert(`⚠️ Stock insuffisant pour ${produit}. Disponible: ${stockItem ? stockItem.quantite : 0}`);
+    if (!stockItem) {
+      alert(`❌ Produit "${produit}" introuvable dans le stock.`);
+      return false;
+    }
+    if (stockItem.quantite < qte) {
+      alert(`⚠️ Stock insuffisant pour ${produit}. Restant: ${stockItem.quantite}`);
       return false;
     }
     stockItem.quantite -= qte;
@@ -359,7 +371,7 @@
   }
 
   function addExpense(motif, montant) {
-    if (!motif || montant <= 0) return;
+    if (!motif || montant <= 0) { alert("Motif et montant valides"); return; }
     depenses.unshift({ motif, montant, date: new Date().toLocaleDateString('fr-FR') });
     saveToLocal();
     refreshAll();
@@ -369,47 +381,44 @@
   function deleteExpense(idx) { depenses.splice(idx,1); saveToLocal(); refreshAll(); }
   function deleteStock(idx) { stock.splice(idx,1); saveToLocal(); refreshAll(); }
 
-  // Remplir les selects dynamiques
+  // Fonction cruciale : remplit les listes déroulantes à partir du tableau stock
   function populateSelects() {
     const productSelect = document.getElementById('produitSelect');
     const stockSelect = document.getElementById('stockProductSelect');
-    if (!productSelect) return;
-    const options = stock.map(p => `<option value="${escapeHtml(p.nom)}">${escapeHtml(p.nom)} (${p.quantite} en stock)</option>`);
-    productSelect.innerHTML = options.join('');
-    stockSelect.innerHTML = `<option value="">-- Choisir un produit --</option>` + options.join('');
+    if (!productSelect || !stockSelect) return;
+    
+    if (!stock.length) {
+      productSelect.innerHTML = '<option value="">-- Aucun produit, ajoutez-en --</option>';
+      stockSelect.innerHTML = '<option value="">-- Aucun produit --</option>';
+      return;
+    }
+    
+    let options = '';
+    for (let p of stock) {
+      options += `<option value="${escapeHtml(p.nom)}">${escapeHtml(p.nom)} (${p.quantite} en stock)</option>`;
+    }
+    productSelect.innerHTML = options;
+    stockSelect.innerHTML = '<option value="">-- Choisir un produit --</option>' + options;
   }
 
-  // Rendu complet
-  function refreshAll() {
-    if (!appReady) return;
-    populateSelects();
-    renderStockTable();
-    renderExpensesTable();
-    renderSalesTable();
-    updateDashboardStats();
-    renderDailyMonthly();
-    renderAlerts();
-    updateChartToday();
-    applyRolePermissions();
-  }
-
+  // Rendu des tableaux
   function renderStockTable() {
     const container = document.getElementById('stockListContainer');
     if (!container) return;
-    if (!stock.length) { container.innerHTML = '<div class="stat-card">Aucun stock</div>'; return; }
+    if (!stock.length) { container.innerHTML = '<div class="stat-card">📦 Aucun produit en stock</div>'; return; }
     let html = '<table><thead><tr><th>Produit</th><th>Quantité</th><th>Action</th></tr></thead><tbody>';
     stock.forEach((s, idx) => {
-      const low = s.quantite <= 5 ? 'style="color:#f97316; font-weight:bold"' : '';
+      const lowClass = s.quantite <= 5 ? 'style="color:#f97316; font-weight:bold"' : '';
       html += `<tr>
         <td><strong>${escapeHtml(s.nom)}</strong></td>
-        <td ${low}>${s.quantite} unités</td>
+        <td ${lowClass}>${s.quantite} unités</td>
         <td><button class="delete-btn" data-type="stock" data-idx="${idx}">🗑️ Supprimer</button></td>
       </tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
     document.querySelectorAll('.delete-btn[data-type="stock"]').forEach(btn => {
-      btn.addEventListener('click', (e) => { const idx = btn.dataset.idx; if(confirm("Supprimer définitivement cet article ?")) deleteStock(parseInt(idx)); });
+      btn.addEventListener('click', (e) => { const idx = btn.dataset.idx; if(confirm("Supprimer cet article ?")) deleteStock(parseInt(idx)); });
     });
   }
 
@@ -419,8 +428,12 @@
     if (!depenses.length) { container.innerHTML = '<div class="stat-card">Aucune dépense</div>'; return; }
     let html = '<table><thead><tr><th>Motif</th><th>Montant</th><th>Date</th><th></th></tr></thead><tbody>';
     depenses.forEach((d, idx) => {
-      html += `<tr><td>${escapeHtml(d.motif)}</td><td>${d.montant} DH</td><td>${d.date}</td>
-      <td><button class="delete-btn" data-type="expense" data-idx="${idx}">❌</button></td></tr>`;
+      html += `<tr>
+        <td>${escapeHtml(d.motif)}</td>
+        <td>${d.montant} DH</td>
+        <td>${d.date}</td>
+        <td><button class="delete-btn" data-type="expense" data-idx="${idx}">❌</button></td>
+      </tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -432,16 +445,22 @@
   function renderSalesTable() {
     const container = document.getElementById('salesListContainer');
     if (!container) return;
-    if (!ventes.length) { container.innerHTML = '<div class="stat-card">Aucune vente</div>'; return; }
+    if (!ventes.length) { container.innerHTML = '<div class="stat-card">Aucune vente enregistrée</div>'; return; }
     let html = '<table><thead><tr><th>Produit</th><th>Qté</th><th>Prix U</th><th>Total</th><th>Date</th><th></th></tr></thead><tbody>';
     ventes.forEach((v, idx) => {
-      html += `<tr><td>${escapeHtml(v.produit)}</td><td>${v.qte}</td><td>${v.prix}</td><td><strong>${v.total} DH</strong></td><td>${v.date}</td>
-      <td><button class="delete-btn" data-type="sale" data-idx="${idx}">🗑️</button></td></tr>`;
+      html += `<tr>
+        <td>${escapeHtml(v.produit)}</td>
+        <td>${v.qte}</td>
+        <td>${v.prix}</td>
+        <td><strong>${v.total} DH</strong></td>
+        <td>${v.date}</td>
+        <td><button class="delete-btn" data-type="sale" data-idx="${idx}">🗑️</button></td>
+      </tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
     document.querySelectorAll('.delete-btn[data-type="sale"]').forEach(btn => {
-      btn.addEventListener('click', (e) => { const idx = btn.dataset.idx; if(confirm("Annuler cette vente ? (Le stock ne sera pas recalculé automatiquement)")) deleteSale(parseInt(idx)); });
+      btn.addEventListener('click', (e) => { const idx = btn.dataset.idx; if(confirm("Annuler cette vente ? (Le stock ne sera pas recalculé)")) deleteSale(parseInt(idx)); });
     });
   }
 
@@ -488,7 +507,7 @@
     if(chartInstance) chartInstance.destroy();
     chartInstance = new Chart(ctx, {
       type: 'bar',
-      data: { labels: ['Ventes jour', 'Dépenses jour'], datasets: [{ label: 'DH', data: [ventesToday, depensesToday], backgroundColor: ['#10b981', '#f97316'], borderRadius: 10 }] },
+      data: { labels: ['Ventes jour', 'Dépenses jour'], datasets: [{ label: 'Montant (DH)', data: [ventesToday, depensesToday], backgroundColor: ['#10b981', '#f97316'], borderRadius: 10 }] },
       options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#e2e8f0' } } } }
     });
   }
@@ -500,7 +519,7 @@
     document.getElementById('alertsPanel').innerHTML = alerts;
   }
 
-  // Export CSV pour Google Sheets
+  // Export CSV compatible Google Sheets
   function exportToCSV() {
     let csvRows = [];
     csvRows.push(["=== VENTES ==="]);
@@ -520,11 +539,10 @@
     a.download = `ma9ha_export_${new Date().toISOString().slice(0,19)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    alert("Fichier CSV généré ! Ouvrez-le avec Google Sheets pour importer.");
+    alert("Fichier CSV prêt à être importé dans Google Sheets.");
   }
 
-  // Génération PDF enrichi
-  async function generateInvoicePDF() {
+  function generateInvoicePDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const client = document.getElementById('clientName').value.trim() || "Client";
@@ -559,20 +577,6 @@ Merci de votre visite !
     }
   }
 
-  // Gestion rôles Admin/Caissier
-  function applyRolePermissions() {
-    const role = document.getElementById('roleSelect').value;
-    const isAdmin = role === 'admin';
-    const adminBtns = ['exportCSVBtn', 'backupBtn', 'resetBtn', 'createProductBtn', 'addStockBtn', 'addDepenseBtn'];
-    adminBtns.forEach(id => {
-      const btn = document.getElementById(id);
-      if(btn) btn.disabled = !isAdmin;
-    });
-    // Désactiver suppression si caissier
-    document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = isAdmin ? 'inline-block' : 'none');
-  }
-
-  // Sauvegarde locale
   function backupLocal() {
     const backup = { ventes, depenses, stock, date: new Date() };
     localStorage.setItem('backup_ma9ha_manual', JSON.stringify(backup));
@@ -588,26 +592,52 @@ Merci de votre visite !
     }
   }
 
-  // Écouteurs
+  function applyRolePermissions() {
+    const role = document.getElementById('roleSelect').value;
+    const isAdmin = role === 'admin';
+    const adminBtns = ['exportCSVBtn', 'backupBtn', 'resetBtn', 'createProductBtn', 'addStockBtn', 'addDepenseBtn'];
+    adminBtns.forEach(id => {
+      const btn = document.getElementById(id);
+      if(btn) btn.disabled = !isAdmin;
+    });
+    document.querySelectorAll('.delete-btn').forEach(btn => btn.style.display = isAdmin ? 'inline-block' : 'none');
+  }
+
+  function refreshAll() {
+    if (!appReady) return;
+    populateSelects();      // <-- Met à jour les deux listes déroulantes
+    renderStockTable();
+    renderExpensesTable();
+    renderSalesTable();
+    updateDashboardStats();
+    renderDailyMonthly();
+    renderAlerts();
+    updateChartToday();
+    applyRolePermissions();
+  }
+
+  // Événements
   function bindEvents() {
     document.getElementById('ajoutVenteBtn').onclick = () => {
       const produit = document.getElementById('produitSelect').value;
+      if (!produit) { alert("Veuillez sélectionner un produit."); return; }
       const qte = parseInt(document.getElementById('quantiteVente').value);
       const prix = parseFloat(document.getElementById('prixVente').value);
-      if(isNaN(qte) || isNaN(prix)) return alert("Valeurs invalides");
+      if (isNaN(qte) || isNaN(prix)) { alert("Quantité et prix valides"); return; }
       sellProduct(produit, qte, prix);
     };
     document.getElementById('addStockBtn').onclick = () => {
       const prod = document.getElementById('stockProductSelect').value;
+      if (!prod) { alert("Choisissez un produit dans la liste."); return; }
       const qty = parseInt(document.getElementById('stockQtyAdd').value);
-      if(!prod || isNaN(qty) || qty <= 0) return alert("Choisissez un produit et une quantité positive");
+      if (isNaN(qty) || qty <= 0) { alert("Quantité positive valide"); return; }
       updateStockQuantity(prod, qty);
       document.getElementById('stockQtyAdd').value = '';
     };
     document.getElementById('addDepenseBtn').onclick = () => {
       const motif = document.getElementById('depNameInput').value.trim();
       const montant = parseFloat(document.getElementById('depAmountInput').value);
-      if(!motif || isNaN(montant) || montant <=0) return;
+      if (!motif || isNaN(montant) || montant <=0) { alert("Motif et montant valides"); return; }
       addExpense(motif, montant);
       document.getElementById('depNameInput').value = '';
       document.getElementById('depAmountInput').value = '';
@@ -615,8 +645,8 @@ Merci de votre visite !
     document.getElementById('createProductBtn').onclick = () => {
       const name = document.getElementById('newProductName').value.trim();
       const initStock = parseInt(document.getElementById('newProductStock').value);
-      if(!name) return alert("Nom du produit requis");
-      if(addCustomProduct(name, initStock)) {
+      if (!name) { alert("Nom du produit requis"); return; }
+      if (addCustomProduct(name, initStock)) {
         document.getElementById('newProductName').value = '';
         document.getElementById('newProductStock').value = '10';
       }
@@ -628,21 +658,31 @@ Merci de votre visite !
     document.getElementById('roleSelect').addEventListener('change', () => refreshAll());
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+
   function unlockApp() {
-    if(pinInput.value === MASTER_PIN) {
+    if (pinInput.value === MASTER_PIN) {
       lockDiv.classList.add('hidden');
       mainDiv.style.display = 'block';
       loadFromLocal();
       appReady = true;
       bindEvents();
-      refreshAll();
+      refreshAll();  // Premier affichage complet
       pinErrorSpan.innerText = '';
     } else {
-      pinErrorSpan.innerText = '❌ PIN incorrect';
+      pinErrorSpan.innerText = '❌ PIN incorrect. Accès refusé.';
     }
   }
+
   unlockBtn.onclick = unlockApp;
-  pinInput.addEventListener('keypress', e => { if(e.key === 'Enter') unlockApp(); });
+  pinInput.addEventListener('keypress', e => { if (e.key === 'Enter') unlockApp(); });
 </script>
 </body>
-  </html>
+    </html>
